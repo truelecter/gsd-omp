@@ -4,7 +4,10 @@ All notable changes to `gsd-omp` are recorded here in [Keep a Changelog](https:/
 
 ## [Unreleased]
 
-No unreleased changes recorded.
+### Fixed
+
+- Projected GSD Core's `gsd-core/` documents (`contexts/`, `references/`, `templates/`, `workflows/`) into the runtime root with `/gsd:<command>` rewritten to `/gsd-<command>`, and pointed skills and agents at the projected copies. GSD Core ships these files with the legacy colon spelling and fixes it only in its own installer, so workflows such as `discuss-phase` and `progress` told the agent to suggest commands like `/gsd:plan-phase 10`, which OMP does not register. `gsd-core/bin/` still runs from the GSD Core package.
+- Rewrote `/gsd:<command>` references in projected agent descriptions, which previously kept the colon spelling (for example "Spawned by /gsd:debug").
 
 ## [1.0.20] - 2026-08-29
 

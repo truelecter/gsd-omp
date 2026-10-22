@@ -286,6 +286,7 @@ The installer writes:
 - `extensions/gsd-omp.ts`
 - projected `agents/gsd-*.md`
 - projected `skills/gsd-*/SKILL.md`
+- projected `gsd-core/{contexts,references,templates,workflows}/`, the GSD Core documents skills and agents read by path
 - `.gsd-omp-manifest.json` with ownership hashes
 
 The manifest makes upgrades and uninstalls ownership-aware. Files changed after installation are not overwritten or removed without `--force`.

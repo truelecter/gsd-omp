@@ -26,6 +26,13 @@ End the final report with exactly one lifecycle line, then follow OMP's terminal
 Use \`failed\` or \`cancelled\` instead of \`completed\` when the plan did not complete.
 `;
 
+// GSD Core's markdown trees under `gsd-core/`, which skills, agents, and workflows load by path.
+// GSD Core's own installer copies them with `/gsd:<cmd>` normalized to `/gsd-<cmd>`; reading the
+// package originals would show the agent the colon form, which no host registers. They are
+// projected under the runtime root; `gsd-core/bin/` stays in the package and runs from there.
+const CORE_DOC_DIRS = ['contexts', 'references', 'templates', 'workflows'];
+const CORE_DOC_PATTERN = new RegExp(`(?:~|\\$HOME)/\\.claude/gsd-core/(${CORE_DOC_DIRS.join('|')})(?![a-zA-Z0-9_.-])`, 'g');
+
 function toPosix(value) {
   return value.split(path.sep).join('/');
 }
@@ -53,6 +60,7 @@ function rewriteRuntimePaths(content, { coreRoot, runtimeRoot, names }) {
   const ompRoot = toPosix(runtimeRoot);
   return transformCommands(
     content
+      .replace(CORE_DOC_PATTERN, (_match, dir) => `${ompRoot}/gsd-core/${dir}`)
       .replace(/~\/\.claude\/gsd-core/g, () => coreGsd)
       .replace(/\$HOME\/\.claude\/gsd-core/g, () => coreGsd)
       .replace(/~\/\.claude\//g, () => `${ompRoot}/`)
@@ -74,7 +82,7 @@ function projectAgent(content, sourcePath, context) {
   return [
     '---',
     `name: ${name}`,
-    `description: ${description}`,
+    `description: ${rewriteRuntimePaths(description, context)}`,
     `tools: ${OMP_TOOLS}`,
     'spawns: "*"',
     '---',
@@ -102,6 +110,31 @@ function projectSkill(name, content, context) {
   return `${rewritten.slice(0, index)}${block}\n\n${rewritten.slice(index)}`;
 }
 
+function listFiles(root, relative = '') {
+  return fs.readdirSync(path.join(root, relative), { withFileTypes: true })
+    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+    .flatMap((entry) => {
+      const child = path.join(relative, entry.name);
+      if (entry.isDirectory()) return listFiles(root, child);
+      return entry.isFile() ? [child] : [];
+    });
+}
+
+function projectCoreDocs(context) {
+  const gsdCore = path.join(context.coreRoot, 'gsd-core');
+  return CORE_DOC_DIRS.flatMap((dir) => {
+    const dirRoot = path.join(gsdCore, dir);
+    if (!fs.existsSync(dirRoot)) return [];
+    return listFiles(dirRoot).map((file) => {
+      const source = fs.readFileSync(path.join(dirRoot, file));
+      return {
+        relativePath: path.join('gsd-core', dir, file),
+        content: file.endsWith('.md') ? rewriteRuntimePaths(source.toString('utf8'), context) : source,
+      };
+    });
+  });
+}
+
 function buildProjectedArtifacts({ coreRoot, runtimeRoot }) {
   const names = commandNames(coreRoot);
   const context = { coreRoot, runtimeRoot, names };
@@ -126,6 +159,7 @@ function buildProjectedArtifacts({ coreRoot, runtimeRoot }) {
       content: projectSkill(entry.name, fs.readFileSync(sourcePath, 'utf8'), context),
     });
   }
+  artifacts.push(...projectCoreDocs(context));
   return artifacts;
 }
 
