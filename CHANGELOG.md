@@ -7,6 +7,8 @@ All notable changes to `gsd-omp` are recorded here in [Keep a Changelog](https:/
 ### Fixed
 
 - Stopped projecting GSD Core `agents/*.compact.md` variants into the OMP agents directory. Each variant shares its base agent's `name`, and OMP registered the compact file in place of the full agent, so most GSD subagents ran with the compact prompt even when `workflow.compact_content` was off. This matches GSD Core's own installer (`hostBehaviors.skipCompactAgents`). `gsd-omp update` removes previously projected compact files; with `workflow.compact_content` enabled, GSD Core falls back to the full agent prompt under OMP.
+- Projected GSD Core's `gsd-core/` documents (`contexts/`, `references/`, `templates/`, `workflows/`) into the runtime root with `/gsd:<command>` rewritten to `/gsd-<command>`, and pointed skills and agents at the projected copies. GSD Core ships these files with the legacy colon spelling and fixes it only in its own installer, so workflows such as `discuss-phase` and `progress` told the agent to suggest commands like `/gsd:plan-phase 10`, which OMP does not register. `gsd-core/bin/` still runs from the GSD Core package.
+- Rewrote `/gsd:<command>` references in projected agent descriptions, which previously kept the colon spelling (for example "Spawned by /gsd:debug").
 
 ## [1.0.20] - 2026-08-29
 

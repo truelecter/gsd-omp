@@ -287,6 +287,7 @@ GSD_OMP_LOCALE=zh_CN.UTF-8 gsd-omp doctor
 - `extensions/gsd-omp.ts`
 - 投影后的 `agents/gsd-*.md`
 - 投影后的 `skills/gsd-*/SKILL.md`
+- 投影后的 `gsd-core/{contexts,references,templates,workflows}/`，即 skills 与 agents 按路径读取的 GSD Core 文档
 - `.gsd-omp-manifest.json`（含所有权哈希）
 
 清单文件让升级与卸载具备所有权感知能力。安装后被修改的文件在未加 `--force` 时不会被覆盖或删除。

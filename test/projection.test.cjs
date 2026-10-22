@@ -85,14 +85,57 @@ test('buildProjectedArtifacts filters and deterministically orders core artifact
   }
 });
 
+test('buildProjectedArtifacts projects GSD Core markdown trees with OMP command and path spelling', () => {
+  const coreRoot = temporaryRoot('gsd-omp-projection-core');
+  const runtimeRoot = '/omp-runtime';
+  try {
+    fs.mkdirSync(path.join(coreRoot, 'commands', 'gsd'), { recursive: true });
+    fs.mkdirSync(path.join(coreRoot, 'agents'), { recursive: true });
+    fs.mkdirSync(path.join(coreRoot, 'skills'), { recursive: true });
+    fs.mkdirSync(path.join(coreRoot, 'gsd-core', 'workflows', 'plan-phase'), { recursive: true });
+    fs.mkdirSync(path.join(coreRoot, 'gsd-core', 'bin'), { recursive: true });
+    fs.writeFileSync(path.join(coreRoot, 'commands', 'gsd', 'plan-phase.md'), 'plan');
+    fs.writeFileSync(
+      path.join(coreRoot, 'gsd-core', 'workflows', 'discuss-phase.md'),
+      [
+        'Next: `/gsd:plan-phase 10`',
+        'Read @~/.claude/gsd-core/references/gates.md and $HOME/.claude/gsd-core/workflows/plan-phase/step.md.',
+        'Run node "$HOME/.claude/gsd-core/bin/gsd-tools.cjs" init.',
+      ].join('\n'),
+    );
+    fs.writeFileSync(path.join(coreRoot, 'gsd-core', 'workflows', 'plan-phase', 'step.md'), 'Then gsd:plan-phase.');
+    const manifest = '{"read": "gsd-core/workflows/plan-phase/step.md", "note": "/gsd:plan-phase"}\n';
+    fs.writeFileSync(path.join(coreRoot, 'gsd-core', 'workflows', 'section-manifest.json'), manifest);
+    fs.writeFileSync(path.join(coreRoot, 'gsd-core', 'bin', 'gsd-tools.cjs'), '// /gsd:plan-phase');
+
+    const artifacts = buildProjectedArtifacts({ coreRoot, runtimeRoot });
+    const byPath = new Map(artifacts.map(({ relativePath, content }) => [relativePath, content]));
+    assert.deepEqual([...byPath.keys()], [
+      path.join('gsd-core', 'workflows', 'discuss-phase.md'),
+      path.join('gsd-core', 'workflows', 'plan-phase', 'step.md'),
+      path.join('gsd-core', 'workflows', 'section-manifest.json'),
+    ]);
+    assert.equal(byPath.get(path.join('gsd-core', 'workflows', 'discuss-phase.md')), [
+      'Next: `/gsd-plan-phase 10`',
+      'Read @/omp-runtime/gsd-core/references/gates.md and /omp-runtime/gsd-core/workflows/plan-phase/step.md.',
+      `Run node "${path.join(coreRoot, 'gsd-core', 'bin', 'gsd-tools.cjs').split(path.sep).join('/')}" init.`,
+    ].join('\n'));
+    assert.equal(byPath.get(path.join('gsd-core', 'workflows', 'plan-phase', 'step.md')), 'Then gsd-plan-phase.');
+    assert.equal(Buffer.from(byPath.get(path.join('gsd-core', 'workflows', 'section-manifest.json'))).toString('utf8'), manifest);
+  } finally {
+    fs.rmSync(coreRoot, { recursive: true, force: true });
+  }
+});
+
 test('projectAgent keeps the executor result protocol in projected output', () => {
   const projected = projectAgent(
-    ['---', 'name: gsd-executor', 'description: Execute work', '---', 'Use gsd:demo and ~/.claude/agents.'].join('\n'),
+    ['---', 'name: gsd-executor', 'description: Execute work. Spawned by /gsd:demo.', '---', 'Use gsd:demo and ~/.claude/agents.'].join('\n'),
     'agents/gsd-executor.md',
     { coreRoot: '/core', runtimeRoot: '/omp', names: ['demo'] },
   );
   assert.match(projected, /spawns: "\*"/);
   assert.match(projected, /\[gsd-task-result\] phase \{PHASE\}/);
-  assert.match(projected, /gsd-demo/);
+  assert.match(projected, /^description: Execute work\. Spawned by \/gsd-demo\.$/m);
+  assert.match(projected, /Use gsd-demo/);
   assert.match(projected, /\/omp\/agents/);
 });

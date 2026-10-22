@@ -29,7 +29,8 @@ The path is resolved to an absolute path. A normal installed layout is:
 ├── .gsd-omp-manifest.json
 ├── extensions/gsd-omp.ts
 ├── agents/gsd-*.md
-└── skills/gsd-*/SKILL.md
+├── skills/gsd-*/SKILL.md
+└── gsd-core/{contexts,references,templates,workflows}/
 ```
 
 `PI_CODING_AGENT_DIR` controls where the installer writes. It does not, by itself, change where GSD Core looks for agents during an already running extension. The extension receives the install-time root in the generated wrapper and defaults its own direct-load root to `~/.omp/agent`.

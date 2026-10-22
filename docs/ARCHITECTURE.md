@@ -101,16 +101,17 @@ The EoS `dispatch.isolation: 'none'` value must not be read as a request to disa
 
 ## Artifact projection
 
-`src/projection.cjs` reads the resolved GSD Core `agents/`, `skills/`, and `commands/gsd/` directories. It computes the available command names from the core command files and rewrites source content for OMP:
+`src/projection.cjs` reads the resolved GSD Core `agents/`, `skills/`, `commands/gsd/`, and the markdown trees under `gsd-core/` (`contexts/`, `references/`, `templates/`, `workflows/`). It computes the available command names from the core command files and rewrites source content for OMP:
 
-- Agent frontmatter is validated for `name` and `description`, then rebuilt with OMP's tool list (`read, write, edit, bash, glob, grep, lsp, web_search, task`) and `spawns: "*"`.
-- GSD Core paths such as `~/.claude/gsd-core` and `~/.claude` are rewritten to the resolved core/runtime paths.
+- Agent frontmatter is validated for `name` and `description`, then rebuilt with OMP's tool list (`read, write, edit, bash, glob, grep, lsp, web_search, task`) and `spawns: "*"`. The description gets the same command and path rewriting as the body.
+- GSD Core paths are rewritten: `~/.claude/gsd-core/{contexts,references,templates,workflows}` to the projected copies under the runtime root, other `~/.claude/gsd-core` paths (notably `bin/`) to the installed GSD Core package, and remaining `~/.claude` paths to the runtime root.
 - `gsd:<command>` references are rewritten to OMP's `gsd-<command>` command spelling.
+- The `gsd-core/` markdown trees are projected under `gsd-core/` below the runtime root with the same rewriting; their other files (such as `workflows/section-manifest.json`) are copied unchanged. GSD Core ships these documents with the legacy `/gsd:<command>` spelling and normalizes it only when its own installer copies them, so an agent reading the package originals would suggest commands no host registers. `gsd-core/bin/` is not projected: `gsd-tools.cjs` runs from the package.
 - Projected agents receive the OMP native orchestration guidance. The executor additionally receives the OMP task-result lifecycle line contract.
 - Projected skills receive an `<omp_runtime_cli>` block identifying the authoritative `gsd-tools.cjs` path, `GSD_RUNTIME=omp`, and the projected agents directory. Existing copies of that block are not duplicated.
 - The projected `gsd-execute-phase` skill also receives an `<omp_dispatch>` block: the same executor dispatch contract `/gsd-execute-phase` sends, so a run that reaches the workflow another way (plan-phase `--auto` advancing, `/gsd-autonomous`, a direct skill read) still dispatches executors as native `task` calls with `isolated: true`. GSD Core has no OMP runtime entry, so `gsd-tools query dispatch-isolation` resolves `none` and the workflow's isolation gate reports a fatal error; the contract tells the agent that this verdict does not apply on OMP and to skip the steps for GSD-created worktrees.
 
-The installer places the resulting files under `agents/` and `skills/` below the runtime root. The source files remain in the installed GSD Core package; projection is generated output, not a second source of truth.
+The installer places the resulting files under `agents/`, `skills/`, and `gsd-core/` below the runtime root. The source files remain in the installed GSD Core package; projection is generated output, not a second source of truth.
 
 ## OMP extension lifecycle and command surface
 
